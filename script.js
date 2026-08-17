@@ -1,153 +1,4 @@
-// Three.js Setup for 3D Notebook
-let scene, camera, renderer, notebook;
-
-function init3D() {
-    const canvas = document.getElementById('canvas3d');
-    
-    // Scene setup
-    scene = new THREE.Scene();
-    scene.background = null;
-    
-    // Camera setup
-    camera = new THREE.PerspectiveCamera(75, canvas.clientWidth / canvas.clientHeight, 0.1, 1000);
-    camera.position.z = 2;
-    
-    // Renderer setup
-    renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
-    renderer.setSize(canvas.clientWidth, canvas.clientHeight);
-    renderer.setPixelRatio(window.devicePixelRatio);
-    renderer.setClearColor(0x000000, 0);
-    
-    // Lighting
-    const light1 = new THREE.DirectionalLight(0xffffff, 0.8);
-    light1.position.set(5, 5, 5);
-    scene.add(light1);
-    
-    const light2 = new THREE.DirectionalLight(0x6366f1, 0.5);
-    light2.position.set(-5, -5, 5);
-    scene.add(light2);
-    
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.4);
-    scene.add(ambientLight);
-    
-    // Create Notebook
-    createNotebook();
-    
-    // Mouse interaction
-    document.addEventListener('mousemove', onMouseMove);
-    window.addEventListener('resize', onWindowResize);
-    
-    // Animation loop
-    animate();
-}
-
-function createNotebook() {
-    const group = new THREE.Group();
-    
-    // Notebook base (closed position)
-    const baseGeometry = new THREE.BoxGeometry(1.5, 0.05, 1);
-    const baseMaterial = new THREE.MeshStandardMaterial({ 
-        color: 0x1a1a1a,
-        metalness: 0.7,
-        roughness: 0.2
-    });
-    const base = new THREE.Mesh(baseGeometry, baseMaterial);
-    base.position.y = -0.3;
-    group.add(base);
-    
-    // Screen/Lid
-    const screenGeometry = new THREE.BoxGeometry(1.4, 0.02, 0.95);
-    const screenMaterial = new THREE.MeshStandardMaterial({ 
-        color: 0x0f0f0f,
-        metalness: 0.8,
-        roughness: 0.1,
-        emissive: 0x1a3a52
-    });
-    const screen = new THREE.Mesh(screenGeometry, screenMaterial);
-    screen.position.set(0, 0.2, 0);
-    screen.rotation.x = Math.PI / 6; // Tilt angle
-    group.add(screen);
-    
-    // Screen glow effect
-    const glowGeometry = new THREE.BoxGeometry(1.35, 0.025, 0.9);
-    const glowMaterial = new THREE.MeshBasicMaterial({
-        color: 0x6366f1,
-        transparent: true,
-        opacity: 0.3
-    });
-    const glow = new THREE.Mesh(glowGeometry, glowMaterial);
-    glow.position.set(0, 0.205, 0);
-    glow.rotation.x = Math.PI / 6;
-    group.add(glow);
-    
-    // Keyboard area
-    const keyboardGeometry = new THREE.BoxGeometry(1.4, 0.03, 0.8);
-    const keyboardMaterial = new THREE.MeshStandardMaterial({ 
-        color: 0x0a0a0a,
-        metalness: 0.6,
-        roughness: 0.3
-    });
-    const keyboard = new THREE.Mesh(keyboardGeometry, keyboardMaterial);
-    keyboard.position.y = -0.15;
-    group.add(keyboard);
-    
-    // Key details
-    for (let i = 0; i < 3; i++) {
-        for (let j = 0; j < 5; j++) {
-            const keyGeometry = new THREE.BoxGeometry(0.08, 0.01, 0.08);
-            const keyMaterial = new THREE.MeshStandardMaterial({
-                color: 0x333333,
-                metalness: 0.5,
-                roughness: 0.4
-            });
-            const key = new THREE.Mesh(keyGeometry, keyMaterial);
-            key.position.set(
-                -0.3 + j * 0.15,
-                -0.145,
-                -0.2 + i * 0.2
-            );
-            group.add(key);
-        }
-    }
-    
-    notebook = group;
-    scene.add(notebook);
-}
-
-let mouseX = 0;
-let mouseY = 0;
-
-function onMouseMove(event) {
-    mouseX = (event.clientX / window.innerWidth) * 2 - 1;
-    mouseY = -(event.clientY / window.innerHeight) * 2 + 1;
-}
-
-function onWindowResize() {
-    const canvas = document.getElementById('canvas3d');
-    const width = canvas.clientWidth;
-    const height = canvas.clientHeight;
-    
-    camera.aspect = width / height;
-    camera.updateProjectionMatrix();
-    renderer.setSize(width, height);
-}
-
-function animate() {
-    requestAnimationFrame(animate);
-    
-    if (notebook) {
-        // Rotate based on mouse position
-        notebook.rotation.x = mouseY * 0.5;
-        notebook.rotation.y = mouseX * 0.5;
-        
-        // Gentle floating animation
-        notebook.position.y = Math.sin(Date.now() * 0.001) * 0.1;
-    }
-    
-    renderer.render(scene, camera);
-}
-
-// Scroll Animations
+// Smooth scroll animations
 const observerOptions = {
     threshold: 0.1,
     rootMargin: '0px 0px -100px 0px'
@@ -157,63 +8,210 @@ const observer = new IntersectionObserver((entries) => {
     entries.forEach(entry => {
         if (entry.isIntersecting) {
             entry.target.style.opacity = '1';
-            entry.target.style.animation = 'fadeInUp 0.8s ease forwards';
+            entry.target.style.animation = 'fadeInUp 0.7s cubic-bezier(0.34, 1.56, 0.64, 1) forwards';
+            observer.unobserve(entry.target);
         }
     });
 }, observerOptions);
 
-// Observe all elements with scroll-fade class
+// Initialize animations on page load
 document.addEventListener('DOMContentLoaded', () => {
+    // Observe all scroll-fade elements
     const scrollFadeElements = document.querySelectorAll('.scroll-fade');
     scrollFadeElements.forEach(el => {
         el.style.opacity = '0';
         observer.observe(el);
     });
-    
-    // Initialize 3D
-    init3D();
-    
-    // Parallax effect on scroll
+
+    // Add smooth parallax effect on scroll
+    let ticking = false;
     window.addEventListener('scroll', () => {
-        const scrolled = window.scrollY;
-        const parallaxElements = document.querySelectorAll('[data-parallax]');
-        
-        parallaxElements.forEach(el => {
-            const parallaxValue = el.getAttribute('data-parallax');
-            el.style.transform = `translateY(${scrolled * parallaxValue}px)`;
-        });
+        if (!ticking) {
+            window.requestAnimationFrame(() => {
+                updateParallax();
+                ticking = false;
+            });
+            ticking = true;
+        }
+    });
+
+    // Animate hero text on load
+    animateHeroText();
+});
+
+// Animate hero text with staggered animation
+function animateHeroText() {
+    const fadeInElements = document.querySelectorAll('.fade-in');
+    fadeInElements.forEach((el, index) => {
+        el.style.animation = 'fadeInUp 0.7s cubic-bezier(0.34, 1.56, 0.64, 1) forwards';
+        el.style.opacity = '0';
+        el.style.animationDelay = (index * 0.15) + 's';
+    });
+}
+
+// Parallax effect for elements with data-parallax attribute
+function updateParallax() {
+    const scrolled = window.scrollY;
+    const parallaxElements = document.querySelectorAll('[data-parallax]');
+
+    parallaxElements.forEach(el => {
+        const parallaxValue = el.getAttribute('data-parallax') || 0.5;
+        const yPos = scrolled * parallaxValue;
+        el.style.transform = `translateY(${yPos}px)`;
+    });
+}
+
+// Smooth scroll for navigation links
+document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+    anchor.addEventListener('click', function (e) {
+        e.preventDefault();
+        const target = document.querySelector(this.getAttribute('href'));
+        if (target) {
+            target.scrollIntoView({
+                behavior: 'smooth',
+                block: 'start'
+            });
+        }
     });
 });
 
-// Mobile optimization
+// Add active state to navbar links based on scroll position
+window.addEventListener('scroll', () => {
+    updateNavigation();
+});
+
+function updateNavigation() {
+    const sections = document.querySelectorAll('section[id]');
+    const navLinks = document.querySelectorAll('.nav-menu a');
+
+    let current = '';
+    sections.forEach(section => {
+        const sectionTop = section.offsetTop;
+        const sectionHeight = section.clientHeight;
+        if (scrollY >= sectionTop - 200) {
+            current = section.getAttribute('id');
+        }
+    });
+
+    navLinks.forEach(link => {
+        link.classList.remove('active');
+        if (link.getAttribute('href').slice(1) === current) {
+            link.classList.add('active');
+        }
+    });
+}
+
+// Enhance portfolio items with hover effects
+const portfolioItems = document.querySelectorAll('.portfolio-item');
+portfolioItems.forEach(item => {
+    item.addEventListener('mouseenter', function() {
+        this.style.transform = 'translateY(-8px)';
+    });
+    item.addEventListener('mouseleave', function() {
+        this.style.transform = 'translateY(0)';
+    });
+});
+
+// Add smooth color transition on hover for skill tags
+const skillTags = document.querySelectorAll('.skill-tag');
+skillTags.forEach(tag => {
+    tag.addEventListener('mouseenter', function() {
+        this.style.transition = 'all 0.3s ease';
+    });
+});
+
+// Optimize animations for mobile
 if (window.innerWidth < 768) {
-    // Reduce animations on mobile for better performance
+    // Reduce animation complexity on mobile
     const style = document.createElement('style');
     style.textContent = `
         @media (max-width: 768px) {
             .scroll-fade {
-                animation: fadeInUp 0.6s ease forwards !important;
+                animation: fadeInUp 0.5s ease forwards !important;
+            }
+            .fade-in {
+                animation: fadeInUp 0.5s ease forwards !important;
             }
         }
     `;
     document.head.appendChild(style);
+
+    // Disable parallax on mobile for better performance
+    window.removeEventListener('scroll', updateParallax);
 }
 
-// Handle visibility change to pause/resume 3D rendering
+// Handle visibility change to optimize performance
 document.addEventListener('visibilitychange', () => {
     if (document.hidden) {
-        // Pause rendering when tab is not visible
-        renderer.setAnimationLoop(null);
+        // Pause animations when tab is not visible
+        document.body.style.animation = 'none';
     } else {
-        // Resume rendering
-        renderer.setAnimationLoop(animate);
+        // Resume animations
+        document.body.style.animation = '';
     }
 });
 
+// Add intersection observer for lazy loading images
+const imageObserver = new IntersectionObserver((entries, observer) => {
+    entries.forEach(entry => {
+        if (entry.isIntersecting) {
+            const img = entry.target;
+            if (img.dataset.src) {
+                img.src = img.dataset.src;
+                img.removeAttribute('data-src');
+            }
+            observer.unobserve(img);
+        }
+    });
+});
+
+// Observe all images
+document.querySelectorAll('img[data-src]').forEach(img => {
+    imageObserver.observe(img);
+});
+
+// Smooth scroll behavior for all internal links
+document.querySelectorAll('a[href^="#"]').forEach(link => {
+    link.addEventListener('click', function(e) {
+        const href = this.getAttribute('href');
+        if (href !== '#') {
+            e.preventDefault();
+            const target = document.querySelector(href);
+            if (target) {
+                const offsetTop = target.offsetTop - 80;
+                window.scrollTo({
+                    top: offsetTop,
+                    behavior: 'smooth'
+                });
+            }
+        }
+    });
+});
+
+// Add subtle scale animation to cards on hover
+const cards = document.querySelectorAll('.ai-card, .skill-category, .about-card');
+cards.forEach(card => {
+    card.addEventListener('mouseenter', function() {
+        this.style.transition = 'all 0.3s ease';
+    });
+});
+
+// Performance optimization: debounce scroll events
+function debounce(func, wait) {
+    let timeout;
+    return function executedFunction(...args) {
+        const later = () => {
+            clearTimeout(timeout);
+            func(...args);
+        };
+        clearTimeout(timeout);
+        timeout = setTimeout(later, wait);
+    };
+}
+
 // Export for external access
-window.portfolio3D = {
-    scene,
-    camera,
-    renderer,
-    notebook
+window.portfolioApp = {
+    observer,
+    updateNavigation,
+    updateParallax
 };
